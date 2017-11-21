@@ -52,12 +52,12 @@ with bg as
   , case
       when  coalesce(FIO2, fio2_chartevents) is not null
         and vd.icustay_id is not null -- patient is ventilated
-        and coalesce(FIO2, fio2_chartevents) >= 0.5
+        and coalesce(FIO2, fio2_chartevents) >= 50
         then ROW_NUMBER() over (partition by bg.ICUSTAY_ID ORDER BY AADO2 DESC)
       else null end
       as aado2_rn
   , case
-      when  coalesce(FIO2, fio2_chartevents) >= 0.5
+      when  coalesce(FIO2, fio2_chartevents) >= 50
           then null
       when vd.icustay_id is not null
           then null
@@ -236,10 +236,10 @@ select ie.subject_id, ie.hadm_id, ie.icustay_id
       -- acute renal failure
       , arf.arf as arf
 
-from mimiciii.icustays ie
-inner join mimiciii.admissions adm
+from icustays ie
+inner join admissions adm
   on ie.hadm_id = adm.hadm_id
-inner join mimiciii.patients pat
+inner join patients pat
   on ie.subject_id = pat.subject_id
 
 -- join to above views - the row number filters to 1 row per ICUSTAY_ID

@@ -14,12 +14,12 @@
 --  2) The first 4 characters of ICD9_CODE are compared to 4 character codes
 --  3) The first 3 characters of ICD9_CODE are compared to 3 character codes
 
-DROP MATERIALIZED VIEW IF EXISTS ELIXHAUSER_QUAN;
+DROP MATERIALIZED VIEW IF EXISTS ELIXHAUSER_QUAN CASCADE;
 CREATE MATERIALIZED VIEW ELIXHAUSER_QUAN AS
 with icd as
 (
   select hadm_id, seq_num, icd9_code
-  from mimiciii.diagnoses_icd
+  from diagnoses_icd
   where seq_num != 1 -- we do not include the primary icd-9 code
 )
 , eliflg as

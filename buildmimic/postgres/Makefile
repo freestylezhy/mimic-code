@@ -1,26 +1,19 @@
 # Config
 PHYSIONETURL=https://physionet.org/works/MIMICIIIClinicalDatabase/files/
+PHYSIONETDEMOURL=https://physionet.org/works/MIMICIIIClinicalDatabaseDemo/
 
-# The following check whether values are passed via environment, set to defaults if not
-ifeq ($(DBNAME),)
+# Set the following parameters to defaults
+# These will be overwritten by settings passed to the makefile
 DBNAME := mimic
-endif
-
-ifeq ($(DBUSER),)
 DBUSER := postgres
-endif
-
-# Specify the password here
-# If you don't specify a password, then the role will not require one to login via password authentication
-#DBPASS=
-
-# Change "mimiciii" to specify a different schema
+DBPASS := postgres
 DBSCHEMA := mimiciii
 
 # NOTE: you do not need to specify localhost/port
-# in fact, this is detrimental if you want to use peer authentication, as "localhost" is not strictly local
-#DBHOST := localhost
-#DBPORT := 5432
+# in fact, this is detrimental if you want to use peer authentication
+# "localhost" uses a loopback, so peer authentication doesn't work with it
+DBHOST :=
+DBPORT :=
 
 # when connecting, we use a single variable: DBSTRING
 # **do not modify this**
@@ -33,6 +26,7 @@ endif
 ifneq ($(DBPORT),)
 DBSTRING +=  port=$(DBPORT)
 endif
+# add ON_ERROR_STOP so scripts stop when they fail
 DBSTRING +=  options=--search_path=$(DBSCHEMA)
 
 help:
@@ -56,14 +50,14 @@ help:
 	@echo '----------------------------------------------------------------------------'
 	@echo '                                                                            '
 
-mimic-gz: mimic-check-gz create-user mimic-build-gz
+mimic-gz: mimic-check-gz mimic-build-gz
 
-mimic: mimic-check create-user mimic-build
+mimic: mimic-check mimic-build
 
 create-user:
-	@echo '------------------------'
-	@echo '-- Building MIMIC-III --'
-	@echo '------------------------'
+	@echo '-------------------------------------'
+	@echo '-- Creating user, database, schema --'
+	@echo '-------------------------------------'
 	@echo ''
 	@sleep 2
 	MIMIC_USER="$(DBUSER)" MIMIC_DB="$(DBNAME)" MIMIC_PASSWORD="$(DBPASS)" MIMIC_SCHEMA="$(DBSCHEMA)" ./create_mimic_user.sh
@@ -78,35 +72,35 @@ mimic-build-gz:
 	@echo '---------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_create_tables.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_create_tables.sql
 	@echo ''
 	@echo '------------------'
 	@echo '-- Loading data --'
 	@echo '------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_load_data_gz.sql -v mimic_data_dir=${datadir}
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_load_data_gz.sql -v mimic_data_dir=${datadir}
 	@echo ''
 	@echo '--------------------'
 	@echo '-- Adding indexes --'
 	@echo '--------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_add_indexes.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_add_indexes.sql
 	@echo ''
 	@echo '--------------------'
 	@echo '-- Adding comments --'
 	@echo '--------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_add_comments.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_add_comments.sql
 	@echo ''
 	@echo '----------------'
 	@echo '-- Check data --'
 	@echo '----------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_checks.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_checks.sql
 
 mimic-build:
 	@echo '------------------------'
@@ -118,35 +112,35 @@ mimic-build:
 	@echo '---------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_create_tables.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_create_tables.sql
 	@echo ''
 	@echo '------------------'
 	@echo '-- Loading data --'
 	@echo '------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_load_data.sql -v mimic_data_dir=${datadir}
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_load_data.sql -v mimic_data_dir=${datadir}
 	@echo ''
 	@echo '--------------------'
 	@echo '-- Adding indexes --'
 	@echo '--------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_add_indexes.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_add_indexes.sql
 	@echo ''
 	@echo '--------------------'
 	@echo '-- Adding comments --'
 	@echo '--------------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_add_comments.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_add_comments.sql
 	@echo ''
 	@echo '----------------'
 	@echo '-- Check data --'
 	@echo '----------------'
 	@echo ''
 	@sleep 2
-	psql "$(DBSTRING)" -f postgres_checks.sql
+	psql "$(DBSTRING)" -v ON_ERROR_STOP=1 -f postgres_checks.sql
 
 mimic-download:
 	@echo '------------------------------------------'
@@ -155,15 +149,22 @@ mimic-download:
 	@echo ''
 	wget --user ${physionetuser} --ask-password -P ${datadir} -A csv.gz -m -p -E -k -K -np -nd  "$(PHYSIONETURL)"
 
+mimic-demo-download:
+	@echo '------------------------------------------'
+	@echo '-- Downloading MIMIC-III from PhysioNet --'
+	@echo '------------------------------------------'
+	@echo ''
+	wget --user ${physionetuser} --ask-password -P ${datadir} -A csv.gz -m -p -E -k -K -np -nd  "$(PHYSIONETDEMOURL)"
 
 #This is fairly inelegant and could be tidied with a for loop and an if to check for gzip,
-#but need to maintain compatability with Windows, which baffling lacks these things
+#but need to maintain compatibility with Windows, which baffling lacks these things
 mimic-check-gz:
 	@echo ''
 	@echo '-----------------------'
 	@echo '-- Checking for data --'
 	@echo '-----------------------'
 	@echo ''
+	@echo 'Data path: ' $(datadir)
 ifeq ("$(wildcard $(datadir)ADMISSIONS.csv.gz)","")
 	@echo "Unable to find $(datadir)ADMISSIONS.csv.gz - exiting before build."; exit 1
 endif
@@ -251,6 +252,7 @@ mimic-check:
 	@echo '-- Checking for data --'
 	@echo '-----------------------'
 	@echo ''
+	@echo 'Data path: ' $(datadir)
 ifeq ("$(wildcard $(datadir)ADMISSIONS.csv)","")
 	@echo "Unable to find $(datadir)ADMISSIONS.csv - exiting before build."; exit 1
 endif

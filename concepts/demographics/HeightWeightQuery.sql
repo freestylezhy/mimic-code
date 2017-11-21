@@ -6,9 +6,6 @@
 -- Created by: Erin Hong, Alistair Johnson
 -- ------------------------------------------------------------------
 
--- Define which schema to work on
-SET search_path TO mimiciii;
-
 DROP MATERIALIZED VIEW IF EXISTS heightweight CASCADE;
 CREATE MATERIALIZED VIEW heightweight
 AS
@@ -101,7 +98,7 @@ SELECT f.icustay_id,
 FROM PivotParameters f
 ORDER BY subject_id, icustay_id;
 
---COMMENT ON MATERIALIZED VIEW mimiciii.icustay_detail IS
+--COMMENT ON MATERIALIZED VIEW icustay_detail IS
 -- '
 --   Expands the table "ICUSTAYEVENTS" to show:
 -- ​
